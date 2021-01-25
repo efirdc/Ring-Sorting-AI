@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # Returns a basic solved states with shape (N, n*2 + 1)
 # i.e for N=1, n=3 returns [[0 1 1 1 2 2 2 3 3 3]]
 def basic_solved_state(N, n):
@@ -42,6 +43,7 @@ def apply_action(action_ids, X, x):
     chosen_actions = actions[action_ids, N]
     chosen_actions = chosen_actions % X.shape[0]
 
+    x = x.copy()
     x[N, chosen_actions], x[N, zero_pos] = x[N, zero_pos], x[N, chosen_actions]
 
     return x
@@ -64,14 +66,16 @@ def valid_actions(X, x):
 # Parameters:
 #   X - array of large discs of shape (m,)
 #   x - array of small discs of shape (N, m)
-# Returns:
-#   expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
+# Returns: (x_new, x_parent)
+#   x_new - expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
+#   x_parent - parents of x_new shape (M, m), it has the same rows of the input x, but they are repeated so
+#              each row is a parent of the same row in x_new
 def expand(X, x):
     actions = valid_actions(X, x)
     actions_per_state = [a.shape[0] for a in actions]
-    x = x.repeat(actions_per_state, axis=0)
-    x = apply_action(np.concatenate(actions), X, x)
-    return x
+    x_parent = x.repeat(actions_per_state, axis=0)
+    x_new = apply_action(np.concatenate(actions), X, x_parent)
+    return x_new, x_parent
 
 
 # Given an input array x with shape (..., m)
@@ -114,22 +118,55 @@ class MaskedDistanceHeuristic:
         return h
 
 
+# Keeps track of the explored tree using a hash based graph
+# The self.vertices dictionary maps hash(x) -> x
+# while the self.edges dictionary maps hash(x) -> hash(x_parent)
 class Expanded:
     def __init__(self):
-        self.hashed = set()
+        self.vertices = {}
+        self.edges = {}
 
     def get_hash(self, x):
         return [hash(elem.tobytes()) for elem in list(x)]
 
-    def add(self, x):
-        self.add_hashes(self.get_hash(x))
+    def add(self, x, x_parent):
+        x_hash = self.get_hash(x)
+        new_vertices = {h: xrow for h, xrow in zip(x_hash, list(x))}
+        self.vertices.update(new_vertices)
 
-    def add_hashes(self, hashes):
-        self.hashed.update(hashes)
+        if x_parent is not None:
+            x_parent_hash = self.get_hash(x_parent)
+            new_edges = {h: h_parent for h, h_parent in zip(x_hash, x_parent_hash)}
+            self.edges.update(new_edges)
 
     def contains(self, x):
         if isinstance(x, np.ndarray):
             hashes = self.get_hash(x)
         else:
             hashes = x
-        return np.array([h in self.hashed for h in hashes])
+        return np.array([h in self.vertices for h in hashes])
+
+    def path_to_root(self, x, max_depth=1000):
+        h = self.get_hash(x)[0]
+        x = x[0]
+        out = [x]
+
+        depth = 0
+        while True:
+            depth += 1
+            if depth >= max_depth:
+                raise TimeoutError(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
+            if h not in self.edges:
+                break
+            h = self.edges[h]
+            x_parent = self.vertices[h]
+            out.append(x_parent)
+
+        out.reverse()
+        return np.stack(out)
+
+
+# Formula for how many possible states there are for air berlin when you have n types of small disks
+# Just gives us an idea of how big of a space we are exploring for each n
+def num_possible_states(n):
+    return np.factorial(n * n + 1) // (np.factorial(n) ** n)
