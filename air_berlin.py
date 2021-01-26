@@ -1,4 +1,6 @@
 import numpy as np
+import heapq
+import itertools
 
 
 # Returns a basic solved states with shape (N, n*2 + 1)
@@ -155,7 +157,7 @@ class Expanded:
         while True:
             depth += 1
             if depth >= max_depth:
-                raise TimeoutError(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
+                raise TimeoutError("Reached max depth")#(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
             if h not in self.edges:
                 break
             h = self.edges[h]
@@ -165,8 +167,22 @@ class Expanded:
         out.reverse()
         return np.stack(out)
 
-
 # Formula for how many possible states there are for air berlin when you have n types of small disks
 # Just gives us an idea of how big of a space we are exploring for each n
 def num_possible_states(n):
     return np.factorial(n * n + 1) // (np.factorial(n) ** n)
+
+# Keeps track of the Fringe in a priority queue
+# Priority value based on cost from root plus the hueristic value
+class Fringe:
+    def __init__(self):
+        self.h = []
+        self.counter = itertools.count()
+    
+    def push(self, cost, item):
+        insertion_count = next(self.counter)
+        heapq.heappush(self.h, (cost, insertion_count, item))
+    
+    def pop(self):
+        return heapq.heappop(self.h)
+
