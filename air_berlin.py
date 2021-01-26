@@ -9,12 +9,33 @@ def basic_solved_state(N, n):
     x = np.stack((x,) * N)
     return x
 
+# Replaces basic_solved_state on the student server
+# as np.stack is not available on the server.
+def basic_solved_state_2(N, n):
+    x = np.repeat(np.arange(n) + 1, n)
+    x = np.concatenate((np.array([0]), x))
+    x_stack = np.vstack([x,])
+    for i in range(1, N):
+        x_stack = np.vstack([x_stack, x])
+    return x_stack
 
 # https://stackoverflow.com/questions/5040797/shuffling-numpy-array-along-a-given-axis
 def shuffle_along_axis(a, axis):
     idx = np.random.rand(*a.shape).argsort(axis=axis)
     return np.take_along_axis(a, idx, axis=axis)
 
+# https://gist.github.com/AidySun/bb2b90a993d74400ababb8c8bdbf1d40
+def shuffle_2D_matrix(matrix, axis = 0):
+    np.random.seed(10)
+    if axis == 0: # by column
+        m = matrix.shape[1]
+        permutation = list(np.random.permutation(m))
+        shuffled_matrix = matrix[:, permutation]
+    else:          # by row
+        m = matrix.shape[0]
+        permutation = list(np.random.permutation(m))
+        shuffled_matrix = matrix[permutation, :]
+    return shuffled_matrix
 
 # Returns uniform distributed array of integers {1, 2, 3, 4} with length n*n + 1
 def random_large_discs(n):
@@ -34,7 +55,12 @@ def apply_action(action_ids, X, x):
     zero_pos = np.where(x == 0)[1]
 
     token_jump = X[zero_pos]
-    actions = np.stack((zero_pos,) * 4)
+
+    #actions = np.stack((zero_pos,) * 4)
+    actions = np.vstack([zero_pos,])
+    for i in range(1,4):
+        actions = np.vstack([actions, zero_pos])
+    
     actions = actions
     actions[0] += 1
     actions[1] -= 1
@@ -127,7 +153,8 @@ class Expanded:
         self.edges = {}
 
     def get_hash(self, x):
-        return [hash(elem.tobytes()) for elem in list(x)]
+        #return [hash(elem.tobytes()) for elem in list(x)]
+        return [hash(bytes(elem)) for elem in list(x)]
 
     def add(self, x, x_parent):
         x_hash = self.get_hash(x)
@@ -155,7 +182,7 @@ class Expanded:
         while True:
             depth += 1
             if depth >= max_depth:
-                raise TimeoutError(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
+                raise TimeoutError("Reached max depth.") #(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
             if h not in self.edges:
                 break
             h = self.edges[h]
@@ -163,8 +190,8 @@ class Expanded:
             out.append(x_parent)
 
         out.reverse()
-        return np.stack(out)
-
+        #return np.stack(out)
+        return out
 
 # Formula for how many possible states there are for air berlin when you have n types of small disks
 # Just gives us an idea of how big of a space we are exploring for each n
