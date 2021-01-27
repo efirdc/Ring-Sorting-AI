@@ -110,6 +110,14 @@ def distance_matrix(m):
     return x
 
 
+def ring_matrix(m):
+    x = np.arange(m)
+    x = np.expand_dims(x, -2) - np.expand_dims(x, -1)
+    x = x % m
+    return x
+
+
+
 # Get the distance between x1 and x2 moving clockwise around a ring with m elements
 def clockwise_distance(x1, x2, m):
     x = x2 - x1
@@ -184,9 +192,10 @@ class AscendingDistanceHeuristic:
 class AscendingMaskedDistanceHeuristic:
     def __init__(self, n, scale):
         self.n = n
+        self.m = n * n + 1
         self.scale = scale
 
-        self.D = distance_matrix(n * n)
+        self.D = distance_matrix(self.m)
         self.D = np.maximum(0, self.D - n + 1)
         self.D = self.D * scale
 
@@ -195,22 +204,27 @@ class AscendingMaskedDistanceHeuristic:
     def __call__(self, x):
         N = x.shape[0]
 
-        E = np.zeros((N, self.n * self.n, self.n * self.n))
+        E = np.zeros((N, self.m, self.m))
 
-        zero_pos = np.where(x == 0)[1]
-        x_zero = np.stack([np.roll(sol, -zero) for sol, zero in zip(list(x), zero_pos)])
+        #zero_pos = np.where(x == 0)[1]
+        #x_zero = np.stack([np.roll(sol, -zero) for sol, zero in zip(list(x), zero_pos)])
+        #x = x[x != 0].reshape(N, self.n * self.n)
 
-        x = x[x != 0].reshape(N, self.n * self.n)
+        E += np.expand_dims(x, -1) == np.expand_dims(x, -2)
 
-        for i in range(self.n):
-            x_roll = np.roll(x, -i * self.n, axis=1)
-            E += np.expand_dims(x, -1) == ((np.expand_dims(x_roll, -2) + i) % self.n)
+        for i in range(1, self.n):
+            x_cc_roll = np.roll(x, -i * self.n, axis=1) + i
+            x_cw_roll = self.n + i - np.roll(x, i * self.n + 1, axis=1)
+            print(x[0])
+            print(x_cc_roll[0])
+            print(x_cw_roll[0])
 
-            x_zero_roll = np.roll(x, )
+            E += np.expand_dims(x, -1) == np.expand_dims(x_cc_roll, -2)
+            E += np.expand_dims(x, -1) == np.expand_dims(x_cw_roll, -2)
 
         h = (self.D * E).sum(axis=(-1, -2))
-        print(h[0], h_zero[0])
-        return h + h_zero
+
+        return h
 
 
 class TestAllHeuristic:
@@ -226,6 +240,39 @@ class TestAllHeuristic:
         E = x != self.all
         h = E.sum(axis=2).min(axis=1)
         return h
+
+
+class YetAnotherAscendingDistanceHeuristic:
+    def __init__(self, n, weak_zero=False):
+        self.m = n * n
+        self.n = n
+        self.ring_matrix = ring_matrix(n*n)
+        self.weak_zero = weak_zero
+
+        self.solved = basic_solved_state(1, n)[0]
+
+    def __call__(self, x):
+        zero_pos = np.where(x == 0)[1]
+
+        x_zero_shifted = np.stack([np.roll(x0, -zero) for x0, zero in zip(list(x), zero_pos)])
+        diff_zero = (x_zero_shifted - self.solved) % (self.n)
+        diff_zero = np.minimum(self.n - np.abs(diff_zero), np.abs(diff_zero))
+        h_zero = diff_zero.sum(axis=-1)
+        if self.weak_zero:
+            h_zero = h_zero > 0
+
+        N = x.shape[0]
+        x = x[x != 0].reshape(N, self.m) - 1
+
+        diff = (np.expand_dims(x, -2) - np.expand_dims(x, -1)) % self.n
+        diff *= self.n
+
+        diff = (diff - self.ring_matrix) % self.m
+        diff = np.minimum(self.m - np.abs(diff), np.abs(diff))
+        diff = np.maximum(0, diff - self.n + 1)
+
+        h = diff.sum(axis=(-1, -2))
+        return h + h_zero
 
 
 # Keeps track of the explored tree using a hash based graph
