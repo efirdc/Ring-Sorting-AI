@@ -1,7 +1,19 @@
 from air_berlin import *
+import argparse
+
+
+def check_positive(value):
+    value = int(value)
+    if value < 1:
+        raise argparse.ArgumentTypeError("Value given must be a positive number")
+    return value
 
 def main():
-    n = 3
+    parser = argparse.ArgumentParser()
+    parser.add_argument('groups', type=int)
+    args = parser.parse_args()
+
+    n = args.groups
     x = basic_solved_state(1, n)
     x = shuffle_along_axis(x, 1)
     X = random_large_discs(n)
