@@ -1,12 +1,21 @@
 import numpy as np
+import math
 
-
-# Returns a basic solved states with shape (N, n*2 + 1)
+# Returns a basic solved states with shape (N, n^2 + 1)
 # i.e for N=1, n=3 returns [[0 1 1 1 2 2 2 3 3 3]]
 def basic_solved_state(N, n):
     x = np.repeat(np.arange(n) + 1, n)
     x = np.concatenate((np.array([0]), x))
     x = np.stack((x,) * N)
+    return x
+
+
+# returns matrix of size (n*n + 1, n*n + 1) with every possible solved state as a row
+def all_solved_states(n):
+    m = n * n + 1
+    x = basic_solved_state(1, n)[0]
+    x = [np.roll(x, i) for i in range(m)]
+    x = np.stack(x)
     return x
 
 
@@ -87,22 +96,40 @@ def equality_matrix(x):
     return out
 
 
-# returns a matrix D with shape (m, m) such that D[i][j] = |i - j|
+# returns a matrix D with shape (m, m) such that D[i][j] = min(|i - j|, n - |i - j|)
 # For example, m=4 returns:
-# [[0 1 2 3]
-#  [1 0 1 2]
-#  [2 1 0 1]
-#  [3 2 1 0]]
+# [[0, 1, 2, 1],
+#  [1, 0, 1, 2],
+#  [2, 1, 0, 1],
+#  [1, 2, 1, 0]]
 def distance_matrix(m):
     x = np.arange(m)
-    x = np.expand_dims(x, -1) - np.expand_dims(x, -2)
+    x = np.expand_dims(x, -2) - np.expand_dims(x, -1)
     x = np.abs(x)
+    x = np.minimum(x, m - x)
+    return x
+
+
+# Get the distance between x1 and x2 moving clockwise around a ring with m elements
+def clockwise_distance(x1, x2, m):
+    x = x2 - x1
+    half_m = m // 2
+    x = (x + half_m) % m - half_m
+    return x
+
+
+def clockwise_distance_matrix(m):
+    x = np.arange(m)
+    x = clockwise_distance(np.expand_dims(x, -1), np.expand_dims(x, -2), m)
     return x
 
 
 # Distance based heuristic for an AB state with n tokens
 # In short this heuristic is: sum(max(M(x) - n + 1, 0)) * scale
-# where M(x) matrix with shape (n^2 + 1, n^2 + 1) such that if x[i] == x[j] then M[i][j] = |i - j| else 0
+# where M(x) matrix with shape (n^2 + 1, n^2 + 1)
+#   such that if x[i] == x[j] then M[i][j] = min(|i - j|, n - |i - j|) else 0
+# NOTE: This was designed for the game when it is not required to have sequential elements
+# i.e [2 2 1 1 1 0 3 3 3 2] is a valid solution with this heuristic
 class MaskedDistanceHeuristic:
     def __init__(self, n, scale):
         self.n = n
@@ -115,6 +142,89 @@ class MaskedDistanceHeuristic:
     def __call__(self, x):
         E = equality_matrix(x)
         h = (self.D * E).sum(axis=(-1, -2))
+        return h
+
+
+# Gets the clockwise distance between adjacent elements and sums them together
+class AscendingHeuristic:
+    def __init__(self, n, scale):
+        self.n = n
+        self.scale = scale
+
+    def __call__(self, x):
+        d = clockwise_distance(x, np.roll(x, -1, axis=1), self.n + 1)
+        d[d > 0] -= 1
+        h = np.abs(d).sum(axis=1)
+        return h * self.scale
+
+
+# Experiment, broken
+class AscendingDistanceHeuristic:
+    def __init__(self, n, scale):
+        self.n = n
+        self.scale = scale
+        self.cw_target = clockwise_distance_matrix(n * n) / n
+        self.cw_target += np.sign(self.cw_target) - 1e-3
+        self.cw_target = np.trunc(self.cw_target).astype(np.int32)
+
+    def __call__(self, x):
+        N = x.shape[0]
+        x = x[x != 0].reshape(N, self.n * self.n)
+        cw_actual = clockwise_distance(np.expand_dims(x, -1), np.expand_dims(x, -2), self.n)
+        cw_diff = clockwise_distance(self.cw_target, cw_actual, self.n)
+        cw_diff[cw_diff == 1] = 0
+        cw_diff[cw_diff == -1] = 0
+        h = np.abs(cw_diff).sum(axis=(1, 2))
+        return h * self.scale
+
+
+# Works like the MaskedDistanceHeuristic, except it is applied multiple times while rolling the ring
+# i.e it rolls one group of tokens
+# slightly broken (doesnt care about position of 0)
+class AscendingMaskedDistanceHeuristic:
+    def __init__(self, n, scale):
+        self.n = n
+        self.scale = scale
+
+        self.D = distance_matrix(n * n)
+        self.D = np.maximum(0, self.D - n + 1)
+        self.D = self.D * scale
+
+        self.solved = basic_solved_state(1, n)[0]
+
+    def __call__(self, x):
+        N = x.shape[0]
+
+        E = np.zeros((N, self.n * self.n, self.n * self.n))
+
+        zero_pos = np.where(x == 0)[1]
+        x_zero = np.stack([np.roll(sol, -zero) for sol, zero in zip(list(x), zero_pos)])
+
+        x = x[x != 0].reshape(N, self.n * self.n)
+
+        for i in range(self.n):
+            x_roll = np.roll(x, -i * self.n, axis=1)
+            E += np.expand_dims(x, -1) == ((np.expand_dims(x_roll, -2) + i) % self.n)
+
+            x_zero_roll = np.roll(x, )
+
+        h = (self.D * E).sum(axis=(-1, -2))
+        print(h[0], h_zero[0])
+        return h + h_zero
+
+
+class TestAllHeuristic:
+    def __init__(self, n):
+        self.all = all_solved_states(n)
+        self.all = np.expand_dims(self.all, 0)
+        print(self.all)
+
+    def __call__(self, x):
+        x = np.expand_dims(x, 1)
+        #print(x.shape)
+        #print(self.all.shape)
+        E = x != self.all
+        h = E.sum(axis=2).min(axis=1)
         return h
 
 
@@ -169,4 +279,4 @@ class Expanded:
 # Formula for how many possible states there are for air berlin when you have n types of small disks
 # Just gives us an idea of how big of a space we are exploring for each n
 def num_possible_states(n):
-    return np.factorial(n * n + 1) // (np.factorial(n) ** n)
+    return math.factorial(n * n + 1) // (math.factorial(n) ** n)
