@@ -261,23 +261,30 @@ class TestAllHeuristic:
 
 
 class YetAnotherAscendingDistanceHeuristic:
-    def __init__(self, n, weak_zero=False):
+    def __init__(self, n, scale=1, weak_zero=False):
         self.m = n * n
         self.n = n
+        self.scale = scale
+
         self.ring_matrix = ring_matrix(n*n)
         self.weak_zero = weak_zero
 
         self.solved = basic_solved_state(1, n)[0]
 
-    def __call__(self, x):
-        zero_pos = np.where(x == 0)[1]
+    def __call__(self, x, xvals):
+        if x.shape[0] == 0:
+            raise ValueError("x is empty")
+
+        zero_pos = xvals["zero_pos"]
 
         x_zero_shifted = np.stack([np.roll(x0, -zero) for x0, zero in zip(list(x), zero_pos)])
-        diff_zero = (x_zero_shifted - self.solved) % (self.n)
-        diff_zero = np.minimum(self.n - np.abs(diff_zero), np.abs(diff_zero))
-        h_zero = diff_zero.sum(axis=-1)
         if self.weak_zero:
-            h_zero = h_zero > 0
+            h_zero = 1 - np.all(x_zero_shifted == self.solved, axis=1)
+        else:
+            diff_zero = (x_zero_shifted - self.solved) % (self.n)
+            diff_zero = np.minimum(self.n - np.abs(diff_zero), np.abs(diff_zero))
+            h_zero = diff_zero.sum(axis=-1)
+
 
         N = x.shape[0]
         x = x[x != 0].reshape(N, self.m) - 1
@@ -290,7 +297,8 @@ class YetAnotherAscendingDistanceHeuristic:
         diff = np.maximum(0, diff - self.n + 1)
 
         h = diff.sum(axis=(-1, -2))
-        return h + h_zero
+
+        return h * self.scale + h_zero
 
 
 # Keeps track of the explored tree using a hash based graph
@@ -300,6 +308,9 @@ class Expanded:
     def __init__(self):
         self.vertices = {}
         self.edges = {}
+
+    def __len__(self):
+        return len(self.vertices)
 
     def add(self, xvals, is_root=False):
         new_vertices = {xv["hash"]: xv["prev_action"] for xv in xvals}
@@ -312,10 +323,10 @@ class Expanded:
     def contains(self, xvals):
         return np.array([xv["hash"] in self.vertices for xv in xvals])
 
-    def path_to_root(self, X, x, xvals, max_depth=1000):
+    def path_to_root(self, X, x, xvals, max_depth=10000000):
         out = [x]
 
-        h = xvals[0]["hash"]
+        h = xvals[0]["parent_hash"]
         a = xvals[0]["prev_action"]
 
         depth = 0
@@ -323,8 +334,10 @@ class Expanded:
             depth += 1
             if depth >= max_depth:
                 raise TimeoutError(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
-            x, _ = apply_action(X, x.copy(), xvals, -a)
+
+            x, xvals = apply_action(X, x.copy(), xvals, -a)
             out.append(x)
+
             h = self.edges[h]
             if h not in self.edges or h == 0:
                 break
@@ -347,6 +360,9 @@ class Fringe:
     def __init__(self):
         self.fringe = []
         self.counter = 0
+
+    def __len__(self):
+        return len(self.fringe)
 
     def push(self, x, xvals):
         N = x.shape[0]
