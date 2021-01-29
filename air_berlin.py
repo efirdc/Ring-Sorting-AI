@@ -1,12 +1,12 @@
 import numpy as np
 import heapq
-import itertools
 
 
 # Returns a basic solved states with shape (N, n*2 + 1)
 # i.e for N=1, n=3 returns [[0 1 1 1 2 2 2 3 3 3]]
-def basic_solved_state(N, n):
-    x = np.repeat(np.arange(n) + 1, n)
+def basic_solved_state(N, n, dtype=np.uint8):
+    x = np.arange(n, dtype=dtype)
+    x = np.repeat(x + 1, n)
     x = np.concatenate((np.array([0]), x))
     x = np.stack((x,) * N)
     return x
@@ -23,61 +23,77 @@ def random_large_discs(n):
     return np.random.uniform(1, 5, size=(n * n + 1)).astype(np.int)
 
 
+# Given an array x with shape (N, m)
+# returns a structured array xvals with shape (N, 6)
+# xvals consists of 6 values that stores information for each node in x
+xvals_type = [('zero_pos', 'i4'), ('prev_action', 'i4'), ('g', 'i4'),
+              ('h', 'f4'), ('hash', 'i8'), ('parent_hash', 'i8')]
+def get_xvals(x):
+    xvals = np.zeros(x.shape[0], dtype=xvals_type)
+    xvals['zero_pos'] = np.where(x == 0)[1]
+    xvals['h'] = np.nan
+    xvals['hash'] = np.array([hash(elem.tobytes()) for elem in list(x)])
+    return xvals
+
+
 # Parameters:
 #   X - array of large discs of shape (m,)
 #   x - array of small discs of shape (N, m)
-#   action_ids - int, or array of length (N,) representing which action to perform
-#       0 -> jump CW 1 | 1 -> jump CC 1 | 2 -> jump CW by large token | 3 -> jump CC by large token
+#   xvals - structured array of values (N, 6)
+#   actions - array of valid jumps that can be performed
+#       m -> jump CW by m | -m -> jump CC by m
 # Returns:
-#   x with actions applied, same shape (N, m)
-def apply_action(action_ids, X, x):
+#   x with actions applied (N, m)
+#   xvals  with updated information for each node (N, 6)
+def apply_action(X, x, xvals, actions):
+    jumps = xvals['zero_pos'] + actions
+    jumps = jumps % X.shape[0]
+
     N = range(x.shape[0])
+    x[N, jumps], x[N, xvals['zero_pos']] = x[N, xvals['zero_pos']], x[N, jumps]
+    xvals['zero_pos'] = jumps
+    xvals['prev_action'] = actions
+    xvals['g'] = xvals['g'] + 1
+    xvals['h'] = np.nan
+    xvals['parent_hash'] = xvals['hash']
+    xvals['hash'] = np.array([hash(elem.tobytes()) for elem in list(x)])
 
-    zero_pos = np.where(x == 0)[1]
-
-    token_jump = X[zero_pos]
-    actions = np.stack((zero_pos,) * 4)
-    actions = actions
-    actions[0] += 1
-    actions[1] -= 1
-    actions[2] += token_jump
-    actions[3] -= token_jump
-    chosen_actions = actions[action_ids, N]
-    chosen_actions = chosen_actions % X.shape[0]
-
-    x = x.copy()
-    x[N, chosen_actions], x[N, zero_pos] = x[N, zero_pos], x[N, chosen_actions]
-
-    return x
+    return x, xvals
 
 
 # Parameters:
 #   X - array of large discs of shape (m,)
 #   x - array of small discs of shape (N, m)
+#   xvals - structured array of values (N, 6)
 # Returns:
-#   jagged array of shape (N, *), where the second dimension contains the valid action ids for each x[i]
-def valid_actions(X, x):
-    zero_pos = np.where(x == 0)[1]
-    actions = []
-    num_actions = (X[zero_pos] != 1) * 2 + 2
-    for num in num_actions:
-        actions.append(np.arange(num))
-    return np.array(actions)
+#   array of valid jump distances (N, 4) y
+#       first two indices are 1 and -1
+#       last two indices are X[zero_pos]
+#       jumps that are the opposite of the prev_jump are set to 0
+def valid_actions(X, x, xvals):
+    token_jump = X[xvals['zero_pos']]
+    token_jump[token_jump == 1] = 0
+    ones = np.ones(x.shape[0], dtype='i4')
+    actions = np.stack((ones, -ones, token_jump, -token_jump), axis=1)
+    actions[actions == -xvals['prev_action']] = 0
+    return actions
 
 
 # Parameters:
 #   X - array of large discs of shape (m,)
 #   x - array of small discs of shape (N, m)
+#   xvals - structured array of values (N, 6)
 # Returns: (x_new, x_parent)
-#   x_new - expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
-#   x_parent - parents of x_new shape (M, m), it has the same rows of the input x, but they are repeated so
-#              each row is a parent of the same row in x_new
-def expand(X, x):
-    actions = valid_actions(X, x)
-    actions_per_state = [a.shape[0] for a in actions]
-    x_parent = x.repeat(actions_per_state, axis=0)
-    x_new = apply_action(np.concatenate(actions), X, x_parent)
-    return x_new, x_parent
+#   x - expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
+#   xvals - expanded xvals of shape (M, 6)
+def expand(X, x, xvals):
+    actions = valid_actions(X, x, xvals)
+    action_mask = actions != 0
+    actions_per_state = action_mask.sum(axis=1)
+    x = x.repeat(actions_per_state, axis=0)
+    xvals = xvals.repeat(actions_per_state)
+    x, xvals = apply_action(X, x, xvals, actions[action_mask])
+    return x, xvals
 
 
 # Given an input array x with shape (..., m)
@@ -128,61 +144,67 @@ class Expanded:
         self.vertices = {}
         self.edges = {}
 
-    def get_hash(self, x):
-        return [hash(elem.tobytes()) for elem in list(x)]
-
-    def add(self, x, x_parent):
-        x_hash = self.get_hash(x)
-        new_vertices = {h: xrow for h, xrow in zip(x_hash, list(x))}
+    def add(self, xvals, is_root=False):
+        new_vertices = {xv["hash"]: xv["prev_action"] for xv in xvals}
         self.vertices.update(new_vertices)
 
-        if x_parent is not None:
-            x_parent_hash = self.get_hash(x_parent)
-            new_edges = {h: h_parent for h, h_parent in zip(x_hash, x_parent_hash)}
+        if not is_root:
+            new_edges = {xv["hash"]: xv["parent_hash"] for xv in xvals}
             self.edges.update(new_edges)
 
-    def contains(self, x):
-        if isinstance(x, np.ndarray):
-            hashes = self.get_hash(x)
-        else:
-            hashes = x
-        return np.array([h in self.vertices for h in hashes])
+    def contains(self, xvals):
+        return np.array([xv["hash"] in self.vertices for xv in xvals])
 
-    def path_to_root(self, x, max_depth=1000):
-        h = self.get_hash(x)[0]
-        x = x[0]
+    def path_to_root(self, X, x, xvals, max_depth=1000):
         out = [x]
+
+        h = xvals[0]["hash"]
+        a = xvals[0]["prev_action"]
 
         depth = 0
         while True:
             depth += 1
             if depth >= max_depth:
-                raise TimeoutError("Reached max depth")#(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
-            if h not in self.edges:
-                break
+                raise TimeoutError(f"Reached max depth of {max_depth}. Probably a cycle in the graph.")
+            x, _ = apply_action(X, x.copy(), xvals, -a)
+            out.append(x)
             h = self.edges[h]
-            x_parent = self.vertices[h]
-            out.append(x_parent)
+            if h not in self.edges or h == 0:
+                break
+            a = self.vertices[h]
 
         out.reverse()
-        return np.stack(out)
+        return np.concatenate(out)
+
 
 # Formula for how many possible states there are for air berlin when you have n types of small disks
 # Just gives us an idea of how big of a space we are exploring for each n
 def num_possible_states(n):
     return np.factorial(n * n + 1) // (np.factorial(n) ** n)
 
+
 # Keeps track of the Fringe in a priority queue
 # Priority value based on cost from root plus the hueristic value
+# Tie breakers are dealt with using self.counter
 class Fringe:
     def __init__(self):
-        self.h = []
-        self.counter = itertools.count()
-    
-    def push(self, cost, item):
-        insertion_count = next(self.counter)
-        heapq.heappush(self.h, (cost, insertion_count, item))
-    
-    def pop(self):
-        return heapq.heappop(self.h)
+        self.fringe = []
+        self.counter = 0
 
+    def push(self, x, xvals):
+        N = x.shape[0]
+        for i in range(N):
+            heapq.heappush(self.fringe, (xvals['g'][i] + xvals['h'][i], (self.counter, x[i], xvals[i])))
+            self.counter += 1
+
+    def pop(self, num):
+        xs = []
+        xvals = []
+        for i in range(num):
+            if self.fringe:
+                _, x, xval = heapq.heappop(self.fringe)[1]
+                xs.append(x)
+                xvals.append(xval)
+        xs = np.stack(xs)
+        xvals = np.stack(xvals)
+        return xs, xvals
