@@ -17,6 +17,9 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cos
     fringe.push(x, xvals)
 
     for i in range(10000000):
+        if len(fringe) == 0:
+            return None
+
         x, xvals = fringe.pop(search_width)
 
         best_xval = xvals[0]

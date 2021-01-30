@@ -14,6 +14,9 @@ if __name__ == "__main__":
 
     path = search(X, x, heuristic, verbose=False)
 
-    print("Solution is")
-    for row in path:
-        print(str(row)[1:-1])
+    if path == None:
+        print("No solution")
+    else:
+        print("Solution is")
+        for row in path:
+            print(str(row)[1:-1])
