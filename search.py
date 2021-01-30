@@ -1,7 +1,7 @@
 from air_berlin import *
 
 
-def search(X, x, h, search_width=1, log_interval=None, print_solution=False):
+def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cost_scale=None):
     if log_interval is None:
         log_interval = x.shape[1]
 
@@ -19,7 +19,6 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False):
         best_xval = xvals[0]
 
         if i % log_interval == 0:
-            print(x.shape)
             print(f"Turn: {i}, expanded: {len(expanded)}, fringe: {len(fringe)}")
             print(f"Best g(x) + h(x) = {best_xval['g']} + {round(best_xval['h'], 2)}")
             print(f"State: {x[0]}\n")
@@ -41,8 +40,16 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False):
         x = x[~backtracked]
         xvals = xvals[~backtracked]
 
+        if x.shape[0] == 0:
+            continue
+
         expanded.add(xvals, is_root=i == 0)
         x, xvals = expand(X, x, xvals)
+        if cost_scale is not None:
+            xvals["g"] *= cost_scale
+
+        if x.shape[0] == 0:
+            continue
 
         xvals['h'] = h(x, xvals)
         fringe.push(x, xvals)
@@ -63,11 +70,11 @@ def heuristic_search(X, x, h, search_width=1, log_interval=None, print_solution=
         if i % log_interval == 0:
             print(f"Turn: {i}, expanded: {len(expanded)}")
             print(f"Best h(x) = {round(best_xval['h'], 2)}")
-            print(f"State: {x[0]}\n")
+            #print(f"State: {x[0]}\n")
 
         if best_xval["h"] < 1e-5:
             print("Done.")
-            path = expanded.path_to_root(X, x[:1], xvals[:1])
+            path = expanded.path_to_root(X, x[:1], xvals[:1], max_depth=i*2)
             print(f"Solution length: {path.shape[0]}")
 
             if print_solution:
