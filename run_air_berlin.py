@@ -1,4 +1,4 @@
-from search import *
+from air_berlin import *
 
 
 if __name__ == "__main__":
@@ -6,11 +6,11 @@ if __name__ == "__main__":
     x = input("Small disks:\n")
 
     X = np.array([int(disc) for disc in X.split(" ")], dtype=np.int32)
-    x = np.array([[int(disc) for disc in x.split(" ")]], dtype=np.uint8)
+    x = np.array([[int(disc) for disc in x.split(" ")]], dtype=np.int8)
 
     n = int(np.sqrt(X.shape[0] - 1))
 
-    heuristic = YetAnotherAscendingDistanceHeuristic(n, scale=(1 / (8 * (n - 1))))
+    heuristic = PairwiseDistanceHeuristic(n, scale=(1 / (8 * (n - 1))))
 
     path = search(X, x, heuristic, verbose=False)
 

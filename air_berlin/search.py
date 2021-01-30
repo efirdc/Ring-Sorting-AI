@@ -1,4 +1,7 @@
-from air_berlin import *
+from .game import *
+from .expanded import *
+from .fringe import *
+from .heuristics import *
 
 
 def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cost_scale=None, verbose=True):
@@ -49,7 +52,7 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cos
         if cost_scale is not None:
             xvals["g"] *= cost_scale
 
-        # This actually maybe shouldnt be necessary.
+        # This maybe shouldn't be necessary.
         # Try raising a ValueError here and debugging.
         if x.shape[0] == 0:
             continue
