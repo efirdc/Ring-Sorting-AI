@@ -1,7 +1,7 @@
 from air_berlin import *
 
 
-def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cost_scale=None):
+def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cost_scale=None, verbose=True):
     if log_interval is None:
         log_interval = x.shape[1]
 
@@ -18,21 +18,22 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cos
 
         best_xval = xvals[0]
 
-        if i % log_interval == 0:
+        if verbose and i % log_interval == 0:
             print(f"Turn: {i}, expanded: {len(expanded)}, fringe: {len(fringe)}")
             print(f"Best g(x) + h(x) = {best_xval['g']} + {round(best_xval['h'], 2)}")
             print(f"State: {x[0]}\n")
 
         if best_xval["h"] < 1e-5:
-            print("Done.")
             path = expanded.path_to_root(X, x[:1], xvals[:1])
-            print(f"Solution length: {path.shape[0]}")
 
-            if print_solution:
-                print("Large Disks:")
-                print(X)
-                print("Solution")
-                print(path)
+            if verbose:
+                print("Done.")
+                print(f"Solution length: {path.shape[0]}")
+                if print_solution:
+                    print("Large Disks:")
+                    print(X)
+                    print("Solution")
+                    print(path)
 
             return path
 
