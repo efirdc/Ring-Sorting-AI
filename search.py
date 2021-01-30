@@ -48,6 +48,8 @@ def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cos
         if cost_scale is not None:
             xvals["g"] *= cost_scale
 
+        # This actually maybe shouldnt be necessary.
+        # Try raising a ValueError here and debugging.
         if x.shape[0] == 0:
             continue
 
