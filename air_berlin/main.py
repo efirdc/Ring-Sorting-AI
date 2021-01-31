@@ -1,9 +1,8 @@
-from .utils import *
-from .search import *
+from air_berlin import *
 
 
 if __name__ == '__main__':
-    n = 3
+    n = 4
     N = 1
     x = basic_solved_state(N, n)
     x = shuffle_along_axis(x, 1)
@@ -14,4 +13,4 @@ if __name__ == '__main__':
     print("Large Disks:", X)
     print("Small Disks:", x)
 
-    search(X, x, heuristic)
+    path = search(X, x, heuristic, search_width=1, log_interval=1000, cost_scale=1)

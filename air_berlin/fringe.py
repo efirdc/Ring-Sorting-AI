@@ -16,7 +16,8 @@ class Fringe:
     def push(self, x, xvals):
         N = x.shape[0]
         for i in range(N):
-            heapq.heappush(self.fringe, (xvals['g'][i] + xvals['h'][i], (self.counter, x[i], xvals[i])))
+            xval = xvals[i]
+            heapq.heappush(self.fringe, (xval['g'] + xval['h'], (self.counter, x[i], xval)))
             self.counter += 1
 
     def pop(self, num):

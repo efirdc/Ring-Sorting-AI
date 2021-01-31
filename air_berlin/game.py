@@ -22,7 +22,7 @@ def all_solved_states(n):
 
 # Returns uniform distributed array of integers {1, 2, 3, 4} with length n*n + 1
 def random_large_discs(n):
-    return np.random.randint(1, 4, size=(n * n + 1))
+    return np.random.randint(1, 5, size=(n * n + 1))
 
 
 # Data structure for additional information that is stored with each set of small tiles

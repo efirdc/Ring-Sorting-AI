@@ -67,6 +67,18 @@ def mod_difference_matrix(m):
     return D
 
 
+# Simplest heuristic, returns 0 if solved 1 if not
+class SolvedHeuristic:
+    def __init__(self, n):
+        self.n = n
+
+    def __call__(self, x, xvals):
+        d = x - np.roll(x, 1, axis=1)
+        num_decreasing_elements = (d < 0).sum(axis=1)
+        solved = num_decreasing_elements == 1
+        return 1 - solved
+
+
 class PairwiseDistanceHeuristic:
     def __init__(self, n, scale=1):
         self.m = n * n
@@ -74,13 +86,14 @@ class PairwiseDistanceHeuristic:
         self.scale = scale
 
         self.mod_difference_matrix = mod_difference_matrix(n*n)
-        self.solved = basic_solved_state(1, n)[0]
+        self.solved_heuristic = SolvedHeuristic(n)
 
     def __call__(self, x, xvals):
         N = x.shape[0]
 
+        h = self.solved_heuristic(x, xvals)
+
         # Filter out the zero, so x only has tiles
-        x0 = x
         x = x[x != 0].reshape(N, self.m) - 1
 
         diff = (np.expand_dims(x, -2) - np.expand_dims(x, -1)) % self.n
@@ -90,12 +103,7 @@ class PairwiseDistanceHeuristic:
         diff = np.minimum(self.m - np.abs(diff), np.abs(diff))
         diff = np.maximum(0, diff - self.n + 1)
 
-        h = diff.sum(axis=(-1, -2)) * self.scale
-
-        # The zero does not participate in the heuristic until all small tiles are in the correct order.
-        # Then the heuristic is just 1 if placed correctly and 0 if not
-        x_zero_shifted = np.stack([np.roll(row, -zero) for row, zero in zip(list(x0), xvals["zero_pos"])])
-        h = h + 1 - np.all(x_zero_shifted == self.solved, axis=1)
+        h = h + diff.sum(axis=(-1, -2)) * self.scale
 
         return h
 
@@ -106,13 +114,21 @@ class PairwiseDistanceHeuristic:
 class AdjacentDistanceHeuristic:
     def __init__(self, n, scale):
         self.n = n
+        self.m = n * n
         self.scale = scale
+        self.solved_heuristic = SolvedHeuristic(n)
 
-    def __call__(self, x):
-        d = signed_mod_distance(x, np.roll(x, -1, axis=1), self.n + 1)
+    def __call__(self, x, xvals):
+        h = self.solved_heuristic(x, xvals)
+
+        N = x.shape[0]
+        x = x[x != 0].reshape(N, self.m) - 1
+
+        d = signed_mod_distance(x, np.roll(x, -1, axis=1), self.n)
         d[d > 0] -= 1
-        h = np.abs(d).sum(axis=1)
-        return h * self.scale
+        h = h + np.abs(d).sum(axis=1) * self.scale
+
+        return h
 
 
 # Computes hamming distance between x and all possible solved states
