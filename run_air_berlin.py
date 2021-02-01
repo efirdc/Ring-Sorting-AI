@@ -12,9 +12,10 @@ if __name__ == "__main__":
 
     heuristic = PairwiseDistanceHeuristic(n, scale=(1 / (8 * (n - 1))))
 
-    path = search(X, x, heuristic, verbose=False)
+    #path = search(X, x, heuristic, verbose=False)
+    path = ida_star(X, x, heuristic)
 
-    if path == None:
+    if path is None:
         print("No solution")
     else:
         print("Solution is")

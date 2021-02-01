@@ -2,6 +2,7 @@ from .game import *
 from .expanded import *
 from .fringe import *
 from .heuristics import *
+import numpy as np
 
 
 def search(X, x, h, search_width=1, log_interval=None, print_solution=False, cost_scale=None, verbose=True):
@@ -108,3 +109,62 @@ def heuristic_search(X, x, h, search_width=1, log_interval=None, print_solution=
 
         x = x[arg_best]
         xvals = xvals[arg_best]
+
+
+def ida_star(X, x, h):
+    xvals = get_xvals(x)
+    bound = h(x, xvals)
+    path = [x[0]]
+
+    solutions = all_solved_states(len(x[0])-1)
+
+    while True:
+        threshold = ida_search(X, path, 0, bound, h, solutions)
+        
+        if threshold is "FOUND":
+            return path
+        
+        if threshold is np.inf:
+            return None
+
+        bound = threshold
+            
+
+def ida_search(X, path, g, bound, h, solutions):
+    x = path[-1]
+    x = np.resize(x, (1, len(x)))
+    print("Large:  ", X)
+    print("Small: ", x)
+
+    xvals = get_xvals(x)
+    f = g + h(x, xvals)
+    print("f: ", f)
+    print("bound: ", bound)
+
+    if f > bound:
+        return f
+
+    if is_goal(solutions, x):
+        return "FOUND"
+    
+    min = np.inf
+    children, _ = expand(X, x, xvals)
+
+    for child in children:
+        if not any(np.array_equal(child, elem) for elem in path):
+            path.append(child)
+            threshold = ida_search(X, path, g + 1, bound, h, solutions)
+
+            if threshold is "FOUND":
+                return "FOUND"
+
+            if threshold < min:
+                min = threshold
+            
+            path = path[:-1]
+
+    return min
+
+
+def is_goal(solutions, x):
+    return any(np.array_equal(x, solution) for solution in solutions)
