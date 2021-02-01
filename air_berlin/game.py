@@ -53,7 +53,7 @@ def get_xvals(x):
 #             positive distances are clockwise and negative are counter-clockwise
 # Returns:
 #   x, xvals with actions applied.
-def apply_action(X, x, xvals, actions):
+def apply_action(X, x, xvals, actions, compute_hash=True):
     jumps = xvals['zero_pos'] + actions
     jumps = jumps % X.shape[0]
 
@@ -64,8 +64,9 @@ def apply_action(X, x, xvals, actions):
     xvals['prev_action'] = actions
     xvals['g'] = xvals['g'] + 1
     xvals['h'] = np.nan
-    xvals['parent_hash'] = xvals['hash']
-    xvals['hash'] = np.array([hash(elem.tobytes()) for elem in list(x)])
+    if compute_hash:
+        xvals['parent_hash'] = xvals['hash']
+        xvals['hash'] = np.array([hash(elem.tobytes()) for elem in list(x)])
 
     return x, xvals
 
@@ -95,11 +96,20 @@ def valid_actions(X, x, xvals):
 # Returns: (x_new, x_parent)
 #   x - expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
 #   xvals - expanded xvals of shape (M, 6)
-def expand(X, x, xvals):
+def expand(X, x, xvals, compute_hash=True):
     actions = valid_actions(X, x, xvals)
     action_mask = actions != 0
     actions_per_state = action_mask.sum(axis=1)
     x = x.repeat(actions_per_state, axis=0)
     xvals = xvals.repeat(actions_per_state)
-    x, xvals = apply_action(X, x, xvals, actions[action_mask])
+    x, xvals = apply_action(X, x, xvals, actions[action_mask], compute_hash=compute_hash)
     return x, xvals
+
+
+# Tests if x is solved
+# Works by testing if x decreases exactly once
+def is_solved(x):
+    d = x - np.roll(x, 1, axis=1)
+    num_decreasing_elements = (d < 0).sum(axis=1)
+    solved = num_decreasing_elements == 1
+    return solved

@@ -72,7 +72,7 @@ class SolvedHeuristic:
     def __init__(self, n):
         self.n = n
 
-    def __call__(self, x, xvals):
+    def __call__(self, X, x, xvals):
         d = x - np.roll(x, 1, axis=1)
         num_decreasing_elements = (d < 0).sum(axis=1)
         solved = num_decreasing_elements == 1
@@ -86,12 +86,9 @@ class PairwiseDistanceHeuristic:
         self.scale = scale
 
         self.mod_difference_matrix = mod_difference_matrix(n*n)
-        self.solved_heuristic = SolvedHeuristic(n)
 
-    def __call__(self, x, xvals):
+    def __call__(self, X, x, xvals):
         N = x.shape[0]
-
-        h = self.solved_heuristic(x, xvals)
 
         # Filter out the zero, so x only has tiles
         x = x[x != 0].reshape(N, self.m) - 1
@@ -103,7 +100,7 @@ class PairwiseDistanceHeuristic:
         diff = np.minimum(self.m - np.abs(diff), np.abs(diff))
         diff = np.maximum(0, diff - self.n + 1)
 
-        h = h + diff.sum(axis=(-1, -2)) * self.scale
+        h = diff.sum(axis=(-1, -2)) * self.scale
 
         return h
 
@@ -118,15 +115,14 @@ class AdjacentDistanceHeuristic:
         self.scale = scale
         self.solved_heuristic = SolvedHeuristic(n)
 
-    def __call__(self, x, xvals):
-        h = self.solved_heuristic(x, xvals)
+    def __call__(self, X, x, xvals):
 
         N = x.shape[0]
         x = x[x != 0].reshape(N, self.m) - 1
 
         d = signed_mod_distance(x, np.roll(x, -1, axis=1), self.n)
         d[d > 0] -= 1
-        h = h + np.abs(d).sum(axis=1) * self.scale
+        h = np.abs(d).sum(axis=1) * self.scale
 
         return h
 
@@ -139,12 +135,49 @@ class TestAllHeuristic:
         self.all = all_solved_states(n)
         self.all = np.expand_dims(self.all, 0)
 
-    def __call__(self, x):
+    def __call__(self, X, x, xvals):
         x = np.expand_dims(x, 1)
         E = x != self.all
         h = E.sum(axis=2).min(axis=1)
         return h
 
+
+class HammingHeuristic:
+    def __init__(self, n):
+        self.n = n
+
+    def __call__(self, X, x, xvals):
+        d = signed_mod_distance(x, np.roll(x, -1, axis=1), self.n + 1)
+        d = (d != 0) & (d != 1)
+        h = d.sum(axis=1)
+        return h
+
+
+class BreadthHeuristic:
+    def __init__(self, n, depth, h_breadth):
+        self.n = n
+        self.depth = depth
+        self.h_breadth = h_breadth
+
+    def __call__(self, X, x, xvals):
+        x = x.copy()
+        xvals = xvals.copy()
+        xvals["g"] = 0
+
+        N = x.shape[0]
+        hvals = []
+        for i in range(N):
+            breadth = [(x[i:i+1], xvals[i:i+1])]
+            for d in range(self.depth):
+                breadth.append(expand(X, *breadth[d], compute_hash=False))
+            x_breadth = np.concatenate([elem[0] for elem in breadth])
+            xvals_breadth = np.concatenate([elem[1] for elem in breadth])
+            hvals_breadth = self.h_breadth(X, x_breadth, xvals_breadth)
+            fvals_breadth = hvals_breadth + xvals_breadth["g"]
+            hvals.append(np.min(fvals_breadth))
+        hvals = np.stack(hvals)
+
+        return hvals
 
 # NOTE: This was designed for the game where it is not required to have sequential elements
 # i.e [2 2 1 1 1 0 3 3 3 2] is a valid solution with this heuristic

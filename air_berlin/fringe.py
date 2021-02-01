@@ -31,3 +31,22 @@ class Fringe:
         xs = np.stack(xs)
         xvals = np.stack(xvals)
         return xs, xvals
+
+
+class BeamFringe:
+    def __init__(self):
+        self.x = None
+        self.xvals = None
+
+    def __len__(self):
+        return self.x.shape[0]
+
+    def push(self, x, xvals):
+        self.x = x
+        self.xvals = xvals
+
+    def pop(self, num):
+        arg_best = self.xvals["h"].argsort()
+        arg_best = arg_best[:min(num, self.x.shape[0])]
+
+        return self.x[arg_best], self.xvals[arg_best]

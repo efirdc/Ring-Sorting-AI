@@ -12,10 +12,11 @@ class Expanded:
     def __len__(self):
         return len(self.vertices)
 
-    def add(self, xvals, is_root=False):
+    def add(self, xvals):
         new_vertices = {xv["hash"]: xv["prev_action"] for xv in xvals}
         self.vertices.update(new_vertices)
 
+        is_root = xvals["parent_hash"][0] == 0
         if not is_root:
             new_edges = {xv["hash"]: xv["parent_hash"] for xv in xvals}
             self.edges.update(new_edges)

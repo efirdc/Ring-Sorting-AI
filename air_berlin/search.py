@@ -7,16 +7,13 @@ from .heuristics import *
 import numpy as np
 
 
-def search(X, x, h, search_width=1, cost_scale=None,
+def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
            verbose=True, log_interval=None, print_solution=False, print_state=False):
     if log_interval is None:
         log_interval = x.shape[1]
 
-    expanded = Expanded()
-    fringe = Fringe()
-
     xvals = get_xvals(x)
-    xvals['h'] = h(x, xvals)
+    xvals['h'] = h(X, x, xvals)
 
     fringe.push(x, xvals)
 
@@ -37,8 +34,11 @@ def search(X, x, h, search_width=1, cost_scale=None,
             if print_state:
                 print(f"State: {x[0]}\n")
 
-        if best_xval["h"] < 1e-5:
-            path = expanded.path_to_root(X, x[:1], xvals[:1])
+        candidate_x = xvals["h"] < 1e-5
+        solved_x = is_solved(x[candidate_x])
+        if np.any(solved_x):
+            id = np.where(solved_x)[0][0]
+            path = expanded.path_to_root(X, x[candidate_x][id:id + 1], xvals[candidate_x][id:id + 1])
 
             if verbose:
                 print("Done.")
@@ -56,9 +56,9 @@ def search(X, x, h, search_width=1, cost_scale=None,
         xvals = xvals[~backtracked]
 
         if x.shape[0] == 0:
-            continue
+            raise ValueError("Ran out of nodes!")
 
-        expanded.add(xvals, is_root=i == 0)
+        expanded.add(xvals)
         x, xvals = expand(X, x, xvals)
         if cost_scale is not None:
             xvals["g"] *= cost_scale
@@ -66,92 +66,103 @@ def search(X, x, h, search_width=1, cost_scale=None,
         # This maybe shouldn't be necessary.
         # Try raising a ValueError here and debugging.
         if x.shape[0] == 0:
-            continue
+            raise ValueError("Ran out of nodes! 2")
 
-        xvals['h'] = h(x, xvals)
+        xvals['h'] = h(X, x, xvals)
         fringe.push(x, xvals)
 
 
-def heuristic_search(X, x, h, search_width=1, log_interval=None, print_solution=False):
-    if log_interval is None:
-        log_interval = x.shape[1]
+def ida_star2(X, x, h, verbose=True, log_interval=None, print_solution=False, print_state=False):
+    x_root = x
+    xvals_root = get_xvals(x_root)
 
-    expanded = Expanded()
+    bound = h(X, x_root, xvals_root)
 
-    xvals = get_xvals(x)
-    xvals['h'] = h(x, xvals)
+    for i in range(100000):
+        if verbose:
+            print(f"Deepening iteration {i}, bound {bound}")
+        expanded = Expanded()
+        min_f = np.inf
+        x = x_root
+        xvals = xvals_root
 
-    for i in range(10000000):
-        best_xval = xvals[0]
+        while x.shape[0] > 0:
+            candidate_x = xvals["h"] < 1e-5
+            solved_x = is_solved(x[candidate_x])
+            if np.any(solved_x):
+                id = np.where(solved_x)[0][0]
+                path = expanded.path_to_root(X, x[candidate_x][id:id + 1], xvals[candidate_x][id:id + 1])
 
-        if i % log_interval == 0:
-            print(f"Turn: {i}, expanded: {len(expanded)}")
-            print(f"Best h(x) = {round(best_xval['h'], 2)}")
-            #print(f"State: {x[0]}\n")
+                if verbose:
+                    print("Done.")
+                    print(f"Solution length: {path.shape[0] - 1}")
+                    if print_solution:
+                        print("Large Disks:")
+                        print(X)
+                        print("Solution")
+                        print(path)
 
-        if best_xval["h"] < 1e-5:
-            print("Done.")
-            path = expanded.path_to_root(X, x[:1], xvals[:1], max_depth=i*2)
-            print(f"Solution length: {path.shape[0]}")
+                return path
 
-            if print_solution:
-                print("Large Disks:")
-                print(X)
-                print("Solution")
-                print(path)
+            backtracked = expanded.contains(xvals)
+            x = x[~backtracked]
+            xvals = xvals[~backtracked]
 
-            return path
+            if x.shape[0] == 0:
+                continue
 
-        backtracked = expanded.contains(xvals)
-        x = x[~backtracked]
-        xvals = xvals[~backtracked]
+            expanded.add(xvals)
+            x, xvals = expand(X, x, xvals)
+            xvals['h'] = h(X, x, xvals)
 
-        expanded.add(xvals, is_root=i == 0)
-        x, xvals = expand(X, x, xvals)
+            fvals = xvals['h'] + xvals["g"]
+            new_min_f = np.min(fvals)
+            if new_min_f > bound:
+                min_f = min(min_f, np.min(fvals))
 
-        xvals['h'] = h(x, xvals)
+            bounded = fvals <= bound
+            x = x[bounded]
+            xvals = xvals[bounded]
 
-        arg_best = xvals['h'].argsort()
-        arg_best = arg_best[:min(search_width, arg_best.shape[0])]
+        bound = min_f
 
-        x = x[arg_best]
-        xvals = xvals[arg_best]
 
 
 def ida_star(X, x, h):
     xvals = get_xvals(x)
-    bound = h(x, xvals)
+    bound = h(X, x, xvals)
     path = [x[0]]
 
-    solutions = all_solved_states(len(x[0])-1)
-
     while True:
-        threshold = ida_search(X, path, 0, bound, h, solutions)
+        threshold = ida_search(X, path, 0, bound, h)
+
+        print(len(path), path[-1])
         
         if threshold is "FOUND":
-            return path
+            return np.stack(path)
         
         if threshold is np.inf:
             return None
 
         bound = threshold
+
             
 
-def ida_search(X, path, g, bound, h, solutions):
+def ida_search(X, path, g, bound, h):
     x = path[-1]
     x = np.resize(x, (1, len(x)))
-    print("Large:  ", X)
-    print("Small: ", x)
+    #print("Large:  ", X)
+    #print("Small: ", x)
 
     xvals = get_xvals(x)
-    f = g + h(x, xvals)
-    print("f: ", f)
-    print("bound: ", bound)
+    f = g + h(X, x, xvals)
+    #print("f: ", f)
+    #print("bound: ", bound)
 
     if f > bound:
         return f
 
-    if is_goal(solutions, x):
+    if is_solved(x):
         return "FOUND"
     
     min = np.inf
@@ -160,7 +171,7 @@ def ida_search(X, path, g, bound, h, solutions):
     for child in children:
         if not any(np.array_equal(child, elem) for elem in path):
             path.append(child)
-            threshold = ida_search(X, path, g + 1, bound, h, solutions)
+            threshold = ida_search(X, path, g + 1, bound, h)
 
             if threshold is "FOUND":
                 return "FOUND"
@@ -173,5 +184,3 @@ def ida_search(X, path, g, bound, h, solutions):
     return min
 
 
-def is_goal(solutions, x):
-    return any(np.array_equal(x, solution) for solution in solutions)
