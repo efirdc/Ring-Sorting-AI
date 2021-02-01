@@ -17,7 +17,7 @@ class Fringe:
         N = x.shape[0]
         for i in range(N):
             xval = xvals[i]
-            heapq.heappush(self.fringe, (xval['g'] + xval['h'], (self.counter, x[i], xval)))
+            heapq.heappush(self.fringe, (xval['g'] + xval['h'], (xval['h'], self.counter, x[i], xval)))
             self.counter += 1
 
     def pop(self, num):
@@ -25,7 +25,7 @@ class Fringe:
         xvals = []
         for i in range(num):
             if self.fringe:
-                _, x, xval = heapq.heappop(self.fringe)[1]
+                _, _, x, xval = heapq.heappop(self.fringe)[1]
                 xs.append(x)
                 xvals.append(xval)
         xs = np.stack(xs)
