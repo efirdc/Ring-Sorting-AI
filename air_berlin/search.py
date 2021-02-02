@@ -23,7 +23,8 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
         if len(fringe) == 0:
             return None
 
-        x, xvals = fringe.pop(search_width)
+        #x, xvals = fringe.pop(search_width)
+        x, xvals = fringe.popmin(search_width)
 
         best_xval = xvals[0]
 
