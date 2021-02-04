@@ -21,7 +21,7 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
 
     for i in range(10000000):
         if len(fringe) == 0:
-            return None
+            raise ValueError("Ran out of nodes!")
 
         x, xvals = fringe.pop(search_width)
 
@@ -56,7 +56,7 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
         xvals = xvals[~backtracked]
 
         if x.shape[0] == 0:
-            raise ValueError("Ran out of nodes!")
+            continue
 
         expanded.add(xvals)
         x, xvals = expand(X, x, xvals)
@@ -64,9 +64,8 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
             xvals["g"] *= cost_scale
 
         # This maybe shouldn't be necessary.
-        # Try raising a ValueError here and debugging.
         if x.shape[0] == 0:
-            raise ValueError("Ran out of nodes! 2")
+            continue
 
         xvals['h'] = h(X, x, xvals)
         fringe.push(x, xvals)

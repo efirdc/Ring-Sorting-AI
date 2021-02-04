@@ -127,21 +127,6 @@ class AdjacentDistanceHeuristic:
         return h
 
 
-# Computes hamming distance between x and all possible solved states
-# Then the heuristic is the minimum possible hamming distance.
-# This doesn't work very well but could easily be changed to compute a different distance measure.
-class TestAllHeuristic:
-    def __init__(self, n):
-        self.all = all_solved_states(n)
-        self.all = np.expand_dims(self.all, 0)
-
-    def __call__(self, X, x, xvals):
-        x = np.expand_dims(x, 1)
-        E = x != self.all
-        h = E.sum(axis=2).min(axis=1)
-        return h
-
-
 class HammingHeuristic:
     def __init__(self, n):
         self.n = n
@@ -178,6 +163,7 @@ class BreadthHeuristic:
         hvals = np.stack(hvals)
 
         return hvals
+
 
 # NOTE: This was designed for the game where it is not required to have sequential elements
 # i.e [2 2 1 1 1 0 3 3 3 2] is a valid solution with this heuristic

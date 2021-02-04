@@ -39,6 +39,8 @@ class BeamFringe:
         self.xvals = None
 
     def __len__(self):
+        if self.x is None:
+            return 0
         return self.x.shape[0]
 
     def push(self, x, xvals):
@@ -48,5 +50,9 @@ class BeamFringe:
     def pop(self, num):
         arg_best = self.xvals["h"].argsort()
         arg_best = arg_best[:min(num, self.x.shape[0])]
+        out = self.x[arg_best], self.xvals[arg_best]
 
-        return self.x[arg_best], self.xvals[arg_best]
+        self.x = None
+        self.xvals = None
+
+        return out
