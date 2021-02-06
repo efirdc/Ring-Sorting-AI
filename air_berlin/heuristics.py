@@ -240,7 +240,8 @@ class HammingHeuristic:
         return h
 
 
-# Upgrades any heuristic by doing a few iterations of breadth first search
+# Upgrades any heuristic by doing a few iterations of breadth expansion and applying the heuristic to all nodes
+# then the heuristic for the root is the minimum f score of all expanded nodes
 class BreadthHeuristic:
     def __init__(self, n, depth, h_breadth):
         self.n = n

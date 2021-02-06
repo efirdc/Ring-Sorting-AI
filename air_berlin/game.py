@@ -31,6 +31,7 @@ xvals_type = [
     ('prev_action', np.int32),  # previous action applied to x
     ('g', np.int32),            # cost so far
     ('h', np.float32),          # heuristic
+    ('parent_h', np.float32),   # heuristic of the parent
     ('hash', np.int64),         # hash of small tiles
     ('parent_hash', np.int64)   # hash of the parent small tiles
 ]
@@ -41,6 +42,7 @@ def get_xvals(x):
     xvals = np.zeros(x.shape[0], dtype=xvals_type)
     xvals['zero_pos'] = np.where(x == 0)[1]
     xvals['h'] = np.nan
+    xvals['parent_h'] = np.nan
     xvals['hash'] = np.array([hash(elem.tobytes()) for elem in list(x)])
     return xvals
 
@@ -63,6 +65,7 @@ def apply_action(X, x, xvals, actions, compute_hash=True):
     xvals['zero_pos'] = jumps
     xvals['prev_action'] = actions
     xvals['g'] = xvals['g'] + 1
+    xvals['parent_h'] = xvals['h']
     xvals['h'] = np.nan
     if compute_hash:
         xvals['parent_hash'] = xvals['hash']

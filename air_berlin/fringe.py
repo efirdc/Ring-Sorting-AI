@@ -19,7 +19,9 @@ class Fringe:
         N = x.shape[0]
         for i in range(N):
             xval = xvals[i]
-            heapq.heappush(self.fringe, (xval['g'] + xval['h'], (xval['h'], self.counter, x[i], xval)))
+            fval = xval['g'] + xval['h']
+
+            heapq.heappush(self.fringe, (fval, (xval['h'], self.counter, x[i], xval)))
             self.counter += 1
 
     def pop(self, num):
@@ -60,7 +62,7 @@ class BeamFringe:
         return out
 
 
-class MinMaxFringe():
+class MinMaxFringe:
     def __init__(self, maxsize):
         self.fringe = MinMaxHeap()
         self.counter = 0
@@ -73,26 +75,27 @@ class MinMaxFringe():
         N = x.shape[0]
         for i in range(N):
             xval = xvals[i]
+            new_f = xval['g'] + xval['h']
 
             if len(self.fringe) == self.limit:
                 f, h, _, _, _ = self.fringe.peekmax()
 
-                if f > xval[2] + xval[3]:
+                if f > new_f:
                     self.fringe.popmax()
-                    print(f"f: {f} > g+h: {xval[2] + xval[3]}")
-                    print("poppin")
-                elif f == xval[2] + xval[3] and h > xval[3]:
+                    #print(f"f: {f} > g+h: {xval[2] + xval[3]}")
+                    #print("poppin")
+                elif f == new_f and h > xval['h']:
                     self.fringe.popmax()
-                    print(f"f: {f} == g+h: {xval[2] + xval[3]} and h: {h} > new h: {xval[3]}")
-                    print("poppin")
+                    #print(f"f: {f} == g+h: {xval[2] + xval[3]} and h: {h} > new h: {xval[3]}")
+                    #print("poppin")
                 else:
                     continue
 
             #self.fringe.insert((xval['g'] + xval['h'], xval['h'], self.counter, x[i], xval))
-            self.fringe.insert((xval[2] + xval[3], xval[3], self.counter, x[i], xval))
+            self.fringe.insert((new_f, xval['h'], self.counter, x[i], xval))
             self.counter += 1
 
-    def popmin(self, num):
+    def pop(self, num):
         xs = []
         xvals = []
         for i in range(num):

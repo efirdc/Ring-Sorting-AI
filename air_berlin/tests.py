@@ -29,8 +29,8 @@ def test_heuristic(constructor):
                 print(f"Heuristic is not admissible for state:\n{path[i]}")
                 print(f"True cost to solution: {true_costs[i]} h(x): {hvals[i]}\n")
 
-        not_consistent = hvals[:-1] < hvals[1:]
+        not_consistent = hvals[:-1] > 1 + hvals[1:]
         if np.any(not_consistent):
             for i in np.where(not_consistent)[0]:
                 print(f"Heuristic is not consistent for action:\n{path[i:i+2]}")
-                print(f"The heuristic increased from {hvals[i]} to {hvals[i+1]}\n")
+                print(f"The heuristic decreased from {hvals[i]} to {hvals[i+1]}\n")

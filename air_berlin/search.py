@@ -23,8 +23,7 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
         if len(fringe) == 0:
             raise ValueError("Ran out of nodes!")
 
-        #x, xvals = fringe.pop(search_width)
-        x, xvals = fringe.popmin(search_width)
+        x, xvals = fringe.pop(search_width)
 
         best_xval = xvals[0]
 
