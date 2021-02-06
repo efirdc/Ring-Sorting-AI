@@ -6,3 +6,4 @@ from .search import *
 from .utils import *
 from .visualizations import *
 from .tests import *
+from .min_max_heap import *

@@ -11,9 +11,10 @@ if __name__ == "__main__":
     n = int(np.sqrt(X.shape[0] - 1))
 
     heuristic = PairwiseDistanceHeuristic(n, scale=(1 / (8 * (n - 1))))
+    fringe = MinMaxFringe(5)
+    expanded = Expanded()
 
-    #path = search(X, x, heuristic, verbose=False)
-    path = ida_star(X, x, heuristic)
+    path = search(X, x, heuristic, fringe, expanded)
 
     if path is None:
         print("No solution")
