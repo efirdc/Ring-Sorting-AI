@@ -67,6 +67,108 @@ def mod_difference_matrix(m):
     return D
 
 
+# Given large tokens X, returns the adjacency matrix of a directed graph representing the moves that can occur
+# A[i][j] = 1 if small token at vertex i could move to vertex j if the zero was at vertex j, else 0
+def adjacency_matrix(X):
+    m = X.shape[0]
+    i = np.arange(m).reshape(m, 1)
+    j = np.arange(m).reshape(1, m)
+
+    A = np.zeros((m, m), dtype=np.int)
+
+    # Add the edges for the main cycle
+    A[(i == ((j + 1) % m)) | (i == ((j - 1) % m))] = 1
+
+    # Add the jumps
+    A[(i == ((j + X) % m)) | (i == ((j - X) % m))] = 1
+
+    return A
+
+
+# Given the adjacency matrix A, returns a matrix P where P[i][j] is the length of the shortest path from i to j
+# This function exploits the fact that A^k[i][j] contains the number of walks from i to j with length at least k
+def shortest_path(A):
+    P = A.copy()
+    Ak = A.copy()
+    for k in range(2, A.shape[0] // 2 + 1):
+        Ak = Ak @ A
+        P[(P == 0) & (Ak != 0)] = k
+    np.fill_diagonal(P, 0)
+    return P
+
+
+# Measures how much small disk i dislikes the position of small disk j according to the rules of Air Berlin
+# small disk i does not want to move, and it has a list of valid positions for small disk j
+# if small disk j is at one of those positions, then small disk i likes that (returns 0)
+# Otherwise, the length of the shortest path from position j to a valid position for small disk j is returned
+# Parameters:
+#   i, j - position of small tokens in the ring
+#   ival, jval - values of the small tokens at position i and j, should be in [1, n]
+#   Note: i, j, ival, jval can be single values or arrays with broadcastable shapes
+#   n - Air Berlin n value
+#   P - must be shortest_path(adjacency_matrix(X)) where X is the large tile values for the game
+def air_berlin_distance(i, j, ival, jval, n, P):
+    m = n * n + 1
+
+    # Convert inputs to numpy arrays, broadcast their shapes, and add a trailing dimension
+    vals = (i, j, ival, jval)
+    arrays = [val if isinstance(val, np.ndarray) else np.array(val) for val in vals]
+    arrays = np.broadcast_arrays(*arrays)
+    arrays = [array[..., np.newaxis] for array in arrays]
+    i, j, ival, jval = arrays
+
+    # Get valid j positions
+    val_diff = signed_mod_distance(ival - 1, jval - 1, n)
+    valid_j = (i + val_diff * n) + np.arange(-n + 1, n)
+
+    # Shift the positions to account for the zero
+    roll_over = np.broadcast_to((ival + val_diff) > n, valid_j.shape)
+    roll_back = np.broadcast_to((ival + val_diff) <= 0, valid_j.shape)
+    valid_j[roll_over] += 1
+    valid_j[roll_back] -= 1
+    valid_j = valid_j % m
+
+    all_paths_to_valid_j = P[j, valid_j]
+    shortest_path_to_valid_j = all_paths_to_valid_j.min(axis=-1)
+    return shortest_path_to_valid_j
+
+
+class AirBerlinDistanceHeuristic:
+    def __init__(self, n, X, scale=1):
+        self.n = n
+        self.scale = scale
+
+        P = shortest_path(adjacency_matrix(X))
+
+        m = n * n + 1
+        self.m = m
+
+        # Run all possible input combinations for i, j, ival, jval
+        # Results are stored in a 4D lookup table
+        i = np.arange(m).reshape(m, 1, 1, 1)
+        j = np.arange(m).reshape(1, m, 1, 1)
+        ivals = np.arange(1, n + 1).reshape(1, 1, n, 1)
+        jvals = np.arange(1, n + 1).reshape(1, 1, 1, n)
+        self.D = air_berlin_distance(i, j, ivals, jvals, n, P)
+
+    def __call__(self, X, x, xvals):
+        N = x.shape[0]
+        indices = np.arange(self.m).reshape(1, self.m)
+        indices = np.broadcast_to(indices, (N, self.m))
+        indices = indices[x != 0].reshape(N, self.m - 1)
+        values = x[x != 0].reshape(N, self.m - 1)
+
+        i = indices[..., np.newaxis]
+        j = indices[..., np.newaxis, :]
+        ivals = values[..., np.newaxis] - 1
+        jvals = values[..., np.newaxis, :] - 1
+
+        distances = self.D[i, j, ivals, jvals]
+        h = distances.sum(axis=(-1, -2))
+
+        return h * self.scale
+
+
 # Simplest heuristic, returns 0 if solved 1 if not
 class SolvedHeuristic:
     def __init__(self, n):
@@ -138,6 +240,7 @@ class HammingHeuristic:
         return h
 
 
+# Upgrades any heuristic by doing a few iterations of breadth first search
 class BreadthHeuristic:
     def __init__(self, n, depth, h_breadth):
         self.n = n
