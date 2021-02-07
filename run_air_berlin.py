@@ -2,13 +2,13 @@ from air_berlin import *
 
 
 if __name__ == "__main__":
-    # X = input("Large disks:\n")
-    # x = input("Small disks:\n")
+    X = input()
+    x = input()
 
-    # X = np.array([int(disc) for disc in X.split(" ")], dtype=np.int32)
-    # x = np.array([[int(disc) for disc in x.split(" ")]], dtype=np.int8)
+    X = np.array([int(disc) for disc in X.split(" ")], dtype=np.int32)
+    x = np.array([[int(disc) for disc in x.split(" ")]], dtype=np.int8)
 
-    # n = int(np.sqrt(X.shape[0] - 1))
+    n = int(np.sqrt(X.shape[0] - 1))
 
     n = 3
     N = 1

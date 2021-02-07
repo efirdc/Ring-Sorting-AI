@@ -21,8 +21,8 @@ def all_solved_states(n):
 
 
 # Returns uniform distributed array of integers {1, 2, 3, 4} with length n*n + 1
-def random_large_discs(n):
-    return np.random.randint(1, 5, size=(n * n + 1))
+def random_large_discs(n, low=1, high=4):
+    return np.random.randint(low, high + 1, size=(n * n + 1))
 
 
 # Data structure for additional information that is stored with each set of small tiles
@@ -97,7 +97,7 @@ def valid_actions(X, x, xvals):
 #   x - array of small discs of shape (N, m)
 #   xvals - structured array of values (N, 6)
 # Returns: (x_new, x_parent)
-#   x - expanded x of shape (M, m), 2N <= M <= 4N depending on how many actions are possible per state in x
+#   x - expanded x of shape (M, m), N <= M <= 4N depending on how many actions are possible per state in x
 #   xvals - expanded xvals of shape (M, 6)
 def expand(X, x, xvals, compute_hash=True):
     actions = valid_actions(X, x, xvals)
@@ -112,7 +112,7 @@ def expand(X, x, xvals, compute_hash=True):
 # Tests if x is solved
 # Works by testing if x decreases exactly once
 def is_solved(x):
-    d = x - np.roll(x, 1, axis=1)
-    num_decreasing_elements = (d < 0).sum(axis=1)
+    d = x - np.roll(x, 1, axis=-1)
+    num_decreasing_elements = (d < 0).sum(axis=-1)
     solved = num_decreasing_elements == 1
     return solved
