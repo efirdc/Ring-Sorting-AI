@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 from air_berlin import *
-import sys
 
 
 def main():
-    # X = input("Large disks:\n")
-    # x = input("Small disks:\n")
-    with open("AB.sample") as f:
-        X = f.readline()
-        x = f.readline()
+    X = input()
+    x = input()
 
     X = np.array([int(disc) for disc in X.split(" ")], dtype=np.int32)
     x = np.array([[int(disc) for disc in x.split(" ")]], dtype=np.int8)
@@ -21,13 +17,12 @@ def main():
 
     path = search(X, x, heuristic, fringe, expanded, verbose=False)
 
-    f = open(sys.argv[2], "w")
     if path is None:
-        f.write("No solution\n")
+        print("No solution")
     else:
-        f.write("Solution is\n")
+        print("Solution is")
         for row in path:
-            f.write(str(row)[1:-1] + "\n")
+            print(str(row)[1:-1])
 
 
 if __name__ == "__main__":
