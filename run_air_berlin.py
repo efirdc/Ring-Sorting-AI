@@ -1,7 +1,7 @@
 from air_berlin import *
 
 
-if __name__ == "__main__":
+def main():
     X = input()
     x = input()
 
@@ -31,3 +31,7 @@ if __name__ == "__main__":
         print("Solution is")
         for row in path:
             print(str(row)[1:-1])
+
+
+if __name__ == "__main__":
+    main()
