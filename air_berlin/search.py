@@ -140,8 +140,3 @@ def ida_search(X, path, g, bound, h):
             path.pop()
 
     return min
-
-
-def is_goal(x):
-    solutions = all_solved_states(len(x)-1)
-    return any(np.array_equal(x, solution) for solution in solutions)

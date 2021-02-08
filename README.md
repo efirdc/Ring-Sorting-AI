@@ -1,25 +1,36 @@
 #### Setup
-The command `source setup_env.sh` will create a python virtual environment, install prerequisites, and then activate the virtual environment. 
+The command `source setup_env.sh` will create a python virtual environment, install prerequisites, 
+and then activate the virtual environment.   
 The created environment is located at `../air_berlin_group1_env/`
 
 #### Usage
-Use `source activate_env.sh` to activate the existing environment if it is not already active.
+Use `source activate_env.sh` to activate the existing environment if it is not already active.   
+Then use `python run_air_berlin.py <num_disks>` to run the program.  
+Use `deactivate` to exit the active virtual environment if needed.  
+
+Example
 ```
-./run_air_berlin.py < AB10.sample > AB10.sol
+(air_berlin_group1_env) $ python run_air_berlin.py 10 < AB10.sample > AB10.sol
+(air_berlin_group1_env) $ ./ABC 10 AB10.check < AB10.sol
+Move 1 OK
+Move 2 OK
+Move 3 OK
+SOLUTION OK
 ```
-In this case, `AB10.sample` is the input file, and`AB10.sol` is the output file.
-Use `deactivate` to exit the active virtual environment if needed.
 
 #### Directories and files
-1. air_berlin
-    + `expanded.py`: `Expanded` class
-    + `fringe.py`: `Fringe`, `BeamFringe`, and `MinMaxFringe` classes.
-    + `game.py`: contains Air Berlin game functions that start, evaluate and control the game.
-    + `heuristics.py`: contains the different attempted heuristics.
+- `./air_berlin/`
+    + `expanded.py`: Data structure for closed nodes.
+    + `fringe.py`: Data structures for the fringe.
+    + `game.py`: Functions for game logic and game data structures.
+    + `heuristics.py`: Different heuristics we tried.
     + `min_max_heap.py`: `MinMaxHeap` class, used for `MinMaxFringe`.
-    + `search.py`: contains variations of search functions.
-    + `tests.py`:  tests if a hueristic is not admissable/consistent.
-    + `utils.py`: different functions used to help with debugging/visualization.
-    + `visualizations.py`: `RingPlot` class. 
-2. solutions: contains saved solutions to random examples. 
-3. `run_air_berlin.py`: takes in the input for the small and large discs and prints the solution found.
+    + `search.py`: Search procedures.
+    + `tests.py`:  Some tests for heuristics and `Expanded`.
+    + `utils.py`: Misc. functions used for debugging/visualization.
+    + `visualizations.py`: A class for plotting game states and generating video frames.
+- `run_air_berlin.py`: Main program.
+- `cory_notebook.ipynb`: Messy notebook for experiments.
+- `setup_env.sh`: Sets up the virtual environment.
+- `activate_env.sh`: Activate the virtual environment.
+- `README.md`: You are here.
