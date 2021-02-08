@@ -1,8 +1,8 @@
 ### Results
 
 Video results are viewable at the following links:  
-n=5 https://www.youtube.com/watch?v=6XSouVbOamo&feature=youtu.be
-n=9 https://www.youtube.com/watch?v=w8gSbvMyN5Q&feature=youtu.be
+n=5 https://www.youtube.com/watch?v=6XSouVbOamo&feature=youtu.be  
+n=9 https://www.youtube.com/watch?v=w8gSbvMyN5Q&feature=youtu.be  
 
 #### Setup
 The command `source setup_env.sh` will create a python virtual environment, install prerequisites, 
