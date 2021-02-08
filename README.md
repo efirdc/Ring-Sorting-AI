@@ -5,4 +5,4 @@ the virtual environment. The created environment is located at `../air_berlin_gr
 
 For future runs just use `source activate_env.sh` to activate the existing environment.
 
-The program can then be initiated with `./run_air_berlin.py`
+The program can then be initiated with `python run_air_berlin.py`

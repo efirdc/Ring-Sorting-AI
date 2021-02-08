@@ -20,7 +20,9 @@ def search(X, x, h, fringe, expanded, search_width=1, cost_scale=None,
 
     start_time = time.time()
 
-    for i in range(10000000):
+    i = 0
+    while True:
+        i += 1
         if len(fringe) == 0:
             raise ValueError("Ran out of nodes!")
 
