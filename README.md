@@ -18,6 +18,8 @@ We implemented a number of heuristic based search algorithms including A\*, weig
 More details can be found in our report:  
 https://drive.google.com/file/d/1C5Dvy-799mfjAU4lcljcCjWvq8kI5DWi/view?usp=sharing
 
+The visualization was made with matplotlib. In short it's a scatter plot with a rainbow colormap, black background, and bezier curves to show moves. The frames were saved to the disk as .png files and then combined with ffmpeg.
+
 #### Setup
 The command `source setup_env.sh` will create a python virtual environment, install prerequisites, 
 and then activate the virtual environment.   
