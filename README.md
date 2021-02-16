@@ -1,7 +1,10 @@
 This search-based AI solver was developed over a 2-3 week period for our first group project in the AI course at MacEwan university.
 
 #### Results
-[![Video](https://i.imgur.com/3H9Cj41.png)](https://www.youtube.com/watch?v=sNYYKPS1jWg)
+
+<a href="https://www.youtube.com/watch?v=sNYYKPS1jWg">
+    <img alt="asdfasdf" src="https://i.imgur.com/3H9Cj41.png" width="75%">
+</a>
 
 #### Game Description 
 The object of this game is to sort the dots into a rainbow colour pattern. The potential moves at each iteration are shown with thick white lines, while the chosen move is a red line. The white dot is always allowed to swap with the directly adjacent dots, but each location in the ring is also randomly assigned a jump size J of 1, 2, 3, or 4 at the start of the game. The white dot is also allowed to swap with colored dots that are J spots away from it. So if J=1 then there are no new moves. However, if J is 2, 3, or 4 then there are two extra possible moves at that location.
