@@ -9,13 +9,14 @@ This search-based AI solver was developed over a 2-3 week period for our first g
 #### Game Description 
 The object of this game is to sort the dots into a rainbow colour pattern. The potential moves at each iteration are shown with thick white lines, while the chosen move is a red line. The white dot is always allowed to swap with the directly adjacent dots, but each location in the ring is also randomly assigned a jump size J of 1, 2, 3, or 4 at the start of the game. The white dot is also allowed to swap with colored dots that are J spots away from it. So if J=1 then there are no new moves. However, if J is 2, 3, or 4 then there are two extra possible moves at that location.
 
-A value n is chosen to determine the size of the game. For example in the first game in the video n=5. This means there will be 5 different colors, each with 5 dots. When you include the white dot then there are 5*5 + 1 = 26 dots total in the ring. In the second game of the video n=9 so there are 9*9 + 1 = 82 dots in the ring.
+A value n is chosen to determine the size of the game. For example in the first game in the video n=5. This means there will be 5 different colors, each with 5 dots. When you include the white dot then there are 5\*5 + 1 = 26 dots total in the ring. In the second game of the video n=9 so there are 9\*9 + 1 = 82 dots in the ring.
 
 #### Method
 
-We implemented a number of heuristic based search algorithms including A*, weighted A*, beam search, SMA*, and IDA*.
+We implemented a number of heuristic based search algorithms including A\*, weighted A\*, beam search, SMA\*, and IDA\*.
 
-More details can be found in our report: https://drive.google.com/file/d/1C5Dvy-799mfjAU4lcljcCjWvq8kI5DWi/view?usp=sharing
+More details can be found in our report:  
+https://drive.google.com/file/d/1C5Dvy-799mfjAU4lcljcCjWvq8kI5DWi/view?usp=sharing
 
 #### Setup
 The command `source setup_env.sh` will create a python virtual environment, install prerequisites, 
