@@ -2,7 +2,7 @@ This search-based AI solver was developed over a 2-3 week period for our first g
 
 #### Results
 
-<a href="https://www.youtube.com/watch?v=sNYYKPS1jWg">
+<a href="https://www.youtube.com/watch?v=jye2id7gr3c">
     <img alt="asdfasdf" src="https://i.imgur.com/3H9Cj41.png" width="75%">
 </a>
 
